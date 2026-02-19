@@ -197,7 +197,23 @@
         $scope.data.rating.avg_rating = 0;
         $scope.data.quantity = 1;
 
-        $scope.addToCart = function() {
+        // Helper function to get uniqueid
+        function getUniqueid() {
+            return new Promise((resolve, reject) => {
+                $http({
+                    url: '/api/user/uniqueid',
+                    method: 'GET'
+                }).then((res) => {
+                    currentUser.uniqueid = res.data.uuid;
+                    resolve(res.data.uuid);
+                }).catch((e) => {
+                    console.log('ERROR', e);
+                    reject(e);
+                });
+            });
+        }
+
+        function doAddToCart() {
             var url = '/api/cart/add/' + currentUser.uniqueid + '/' + $scope.data.product.sku + '/' + $scope.data.quantity;
             console.log('addToCart', url);
             $http({
@@ -213,6 +229,21 @@
                 $scope.data.message = 'ERROR ' + e;
                 $timeout(clearMessage, 3000);
             });
+        }
+
+        $scope.addToCart = function() {
+            // Ensure uniqueid exists before adding to cart
+            if (!currentUser.uniqueid) {
+                console.log('uniqueid not set, fetching first...');
+                getUniqueid().then(() => {
+                    doAddToCart();
+                }).catch((e) => {
+                    $scope.data.message = 'ERROR: Could not get user ID';
+                    $timeout(clearMessage, 3000);
+                });
+            } else {
+                doAddToCart();
+            }
         };
 
         $scope.rateProduct = function(score) {
