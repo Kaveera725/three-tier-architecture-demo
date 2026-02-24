@@ -1,0 +1,715 @@
+================================================================================
+   COMPLETE CI/CD PIPELINE FOR ROBOT SHOP ON MINIKUBE - STEP BY STEP GUIDE
+================================================================================
+
+**STATUS: Docker images already built locally (robotshop/rs-* images available)**
+**Docker Hub: kaveera725 (configured ✓)**
+
+Architecture:
+GitHub --> Jenkins (CI) --> Docker Hub --> ArgoCD (CD) --> Minikube (K8s)
+
+IMPORTANT: Since you already have Docker images built, you can:
+- Tag and push them to Docker Hub as kaveera725/rs-*:2.1.0 (Step 6)
+- Or use existing local images for Minikube deployment with imagePullPolicy: Never
+- Recommended: Push to Docker Hub for full CI/CD pipeline experience
+
+================================================================================
+PHASE 1: PREREQUISITES INSTALLATION
+================================================================================
+
+Step 1: Install Required Tools
+-------------------------------
+
+# 1. Install Minikube
+winget install minikube
+
+# 2. Install kubectl
+winget install Kubernetes.kubectl
+
+# 3. Install Helm
+winget install Helm.Helm
+
+# 4. Install Docker Desktop
+# Download from: https://www.docker.com/products/docker-desktop/
+
+# 5. Install Git
+winget install Git.Git
+
+# Verify all installations
+minikube version
+kubectl version --client
+helm version
+docker --version
+git --version
+
+================================================================================
+PHASE 2: START MINIKUBE WITH SUFFICIENT RESOURCES
+================================================================================
+
+Step 2: Start Minikube
+-----------------------
+
+# Stop existing minikube if running
+minikube stop
+minikube delete
+
+# Start with more resources for CI/CD tools
+minikube start --driver=docker --memory=6144 --cpus=4 --disk-size=30g
+
+# Enable required addons
+minikube addons enable ingress
+minikube addons enable metrics-server
+minikube addons enable dashboard
+
+Step 3: Verify Minikube is Running
+------------------------------------
+
+kubectl get nodes
+kubectl get pods -A
+
+================================================================================
+PHASE 3: PUSH CODE TO GITHUB
+================================================================================
+
+Step 4: Create GitHub Repository
+----------------------------------
+
+cd "c:\Users\anush\OneDrive\Desktop\practicle DevOps\eks_deployment\three-tier-architecture-demo"
+
+git init
+git add .
+git commit -m "Initial commit - Robot Shop three tier app"
+git branch -M main
+git remote add origin https://github.com/<your-username>/three-tier-architecture-demo.git
+git push -u origin main
+
+================================================================================
+PHASE 4: SETUP DOCKER HUB
+================================================================================
+
+Step 5: Create Docker Hub Account & Login
+-------------------------------------------
+
+# Create account at https://hub.docker.com/
+# Login to Docker Hub
+docker login
+# Enter your Docker Hub username and password
+
+Step 6: Tag & Push Docker Images (IMAGES ALREADY BUILT LOCALLY)
+------------------------------------------------------------------------
+
+**NOTE:** Your existing images (robotshop/rs-*:2.1.0) are already built locally.
+          You need to tag and push them to Docker Hub for CI/CD pipeline.
+
+# Docker Hub username: kaveera725
+# Using existing tag 2.1.0 or create new version
+
+SET DOCKER_HUB_USERNAME=kaveera725
+SET TAG=2.1.0
+
+# Tag existing local images with your Docker Hub username
+docker tag robotshop/rs-web:2.1.0 %DOCKER_HUB_USERNAME%/rs-web:%TAG%
+docker tag robotshop/rs-catalogue:2.1.0 %DOCKER_HUB_USERNAME%/rs-catalogue:%TAG%
+docker tag robotshop/rs-user:2.1.0 %DOCKER_HUB_USERNAME%/rs-user:%TAG%
+docker tag robotshop/rs-cart:2.1.0 %DOCKER_HUB_USERNAME%/rs-cart:%TAG%
+docker tag robotshop/rs-shipping:2.1.0 %DOCKER_HUB_USERNAME%/rs-shipping:%TAG%
+docker tag robotshop/rs-payment:2.1.0 %DOCKER_HUB_USERNAME%/rs-payment:%TAG%
+docker tag robotshop/rs-ratings:2.1.0 %DOCKER_HUB_USERNAME%/rs-ratings:%TAG%
+docker tag robotshop/rs-dispatch:2.1.0 %DOCKER_HUB_USERNAME%/rs-dispatch:%TAG%
+docker tag robotshop/rs-mongodb:2.1.0 %DOCKER_HUB_USERNAME%/rs-mongodb:%TAG%
+docker tag robotshop/rs-mysql-db:2.1.0 %DOCKER_HUB_USERNAME%/rs-mysql-db:%TAG%
+
+# Push all tagged images to Docker Hub
+docker push %DOCKER_HUB_USERNAME%/rs-web:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-catalogue:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-user:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-cart:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-shipping:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-payment:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-ratings:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-dispatch:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-mongodb:%TAG%
+docker push %DOCKER_HUB_USERNAME%/rs-mysql-db:%TAG%
+
+# ALTERNATIVE: Use existing robotshop images directly (no need to push)
+# Configure Minikube to use local images:
+# minikube image load robotshop/rs-web:2.1.0
+# minikube image load robotshop/rs-catalogue:2.1.0
+# ... (repeat for all services)
+# Then set imagePullPolicy: Never in values.yaml
+
+================================================================================
+PHASE 5: UPDATE HELM VALUES FOR MINIKUBE
+================================================================================
+
+Step 7: Update EKS/helm/values.yamlbased on your choice:
+
+OPTION A - Use Docker Hub images (for CI/CD):
+  image:
+    repo: kaveera725
+    version: 2.1.0
+    pullPolicy: IfNotPresent
+
+OPTION B - Use existing local robotshop images (quick test):
+  image:
+    repo: robotshop
+**PRE-REQUISITE:** Ensure Minikube has access to your images
+
+If using local robotshop images, load them into Minikube:
+----------------------------------------------------------
+eval $(minikube docker-env)   # Point Docker to Minikube's Docker daemon
+
+OR manually load each image:
+minikube image load robotshop/rs-web:2.1.0
+minikube image load robotshop/rs-catalogue:2.1.0
+minikube image load robotshop/rs-user:2.1.0
+minikube image load robotshop/rs-cart:2.1.0
+minikube image load robotshop/rs-shipping:2.1.0
+minikube image load robotshop/rs-payment:2.1.0
+minikube image load robotshop/rs-ratings:2.1.0
+minikube image load robotshop/rs-dispatch:2.1.0
+minikube image load robotshop/rs-mongodb:2.1.0
+minikube image load robotshop/rs-mysql-db:2.1.0
+
+# Verify images are loaded in minikube
+minikube image ls | findstr robotshop
+
+Step 8: Deploy Robot Shop with Helm
+--------------------------------------
+
+# Create namespace
+kubectl create ns robot-shop
+
+# Navigate to helm chart directory
+cd EKS/helm
+
+# Install using Helm
+helm install robot-shop --namespace robot-shop .
+
+# Check pods status
+kubectl get pods -n robot-shop
+
+# Wait until all pods are Running
+kubectl get pods -n robot-shop -w
+
+# If pods show ImagePullBackOff, verify:
+# 1. Images are loaded in minikube: minikube image ls
+# 2. imagePullPolicy is set correctly in values.yaml
+kubectl create ns robot-shop
+
+# Navigate to helm chart directory
+cd EKS/helm
+
+# Install using Helm
+helm install robot-shop --namespace robot-shop .
+
+# Check pods status
+kubectl get pods -n robot-shop
+
+# Wait until all pods are Running
+kubectl get pods -n robot-shop -w
+
+Step 9: Access the Application
+---------------------------------
+
+# Option 1: Use minikube service
+minikube service web -n robot-shop
+
+# Option 2: Port forward
+kubectl port-forward service/web 8080:8080 -n robot-shop
+# Then open http://localhost:8080
+
+# Option 3: Get Minikube IP and NodePort
+minikube ip
+kubectl get svc web -n robot-shop
+
+================================================================================
+PHASE 7: INSTALL JENKINS (CI TOOL)
+================================================================================
+
+Step 10: Deploy Jenkins on Minikube
+--------------------------------------
+
+# Create Jenkins namespace
+kubectl create ns jenkins
+
+# Add Jenkins Helm repo
+helm repo add jenkins https://charts.jenkins.io
+helm repo update
+
+Step 11: Create Jenkins Values File
+--------------------------------------
+
+Create a file called jenkins-values.yaml with the following content:
+
+------- START OF jenkins-values.yaml -------
+controller:
+  serviceType: NodePort
+  nodePort: 32000
+  adminUser: admin
+  adminPassword: admin123
+  installPlugins:
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - pipeline-stage-view:latest
+    - docker-workflow:latest
+    - credentials-binding:latest
+    - github:latest
+
+persistence:
+  enabled: true
+  storageClass: standard
+  size: 10Gi
+
+agent:
+  enabled: true
+  image:
+    repository: jenkins/inbound-agent
+    tag: latest
+------- END OF jenkins-values.yaml -------
+
+Step 12: Install Jenkins
+--------------------------
+
+# Install Jenkins using Helm
+helm install jenkins jenkins/jenkins -n jenkins -f jenkins-values.yaml
+
+# Wait for Jenkins to be ready
+kubectl get pods -n jenkins -w
+
+# Get Jenkins URL
+minikube service jenkins -n jenkins --url
+
+Step 13: Access Jenkins
+-------------------------
+
+# Open the URL from the above command in your browser
+# Login with:
+#   Username: admin
+#   Password: admin123
+
+================================================================================
+PHASE 8: CONFIGURE JENKINS PIPELINE (CI)
+================================================================================
+
+Step 14: Add Credentials in Jenkins
+--------------------------------------
+
+1. Open Jenkins dashboard
+2. Go to: Manage Jenkins -> Credentials -> System -> Global Credentials
+3. Click "Add Credentials"
+
+   Docker Hub Credentials:
+   - Kind: Username with password
+   - ID: docker-hub-credentials
+   - Username: Your Docker Hub username
+   - Password: Your Docker Hub password/token
+
+   GitHub Credentials:
+   - Kind: Username with password
+   - ID: github-credentials
+   - Username: Your GitHub username
+   - Password: Your GitHub personal access token
+
+Step 15: Create Jenkinsfile
+------------------------------
+
+Create a file called "Jenkinsfile" in the root of your project:
+
+------- START OF Jenkinsfile -------
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_HUB_USERNAME = 'kaveera725'
+        DOCKER_CREDENTIALS = credentials('docker-hub-credentials')
+        GIT_REPO = 'https://github.com/your-username/three-tier-architecture-demo.git'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: "${GIT_REPO}"
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    def services = ['web', 'catalogue', 'user', 'cart', 'shipping', 'payment', 'ratings', 'dispatch']
+
+                    for (service in services) {
+                        echo "Building ${service}..."
+                        sh "docker build -t ${DOCKER_HUB_USERNAME}/rs-${service}:${IMAGE_TAG} ./${service}/"
+                        sh "docker tag ${DOCKER_HUB_USERNAME}/rs-${service}:${IMAGE_TAG} ${DOCKER_HUB_USERNAME}/rs-${service}:latest"
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                script {
+                    sh "echo ${DOCKER_CREDENTIALS_PSW} | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin"
+
+                    def services = ['web', 'catalogue', 'user', 'cart', 'shipping', 'payment', 'ratings', 'dispatch']
+
+                    for (service in services) {
+                        echo "Pushing ${service}..."
+                        sh "docker push ${DOCKER_HUB_USERNAME}/rs-${service}:${IMAGE_TAG}"
+                        sh "docker push ${DOCKER_HUB_USERNAME}/rs-${service}:latest"
+                    }
+                }
+            }
+        }
+
+        stage('Update Helm Values') {
+            steps {
+                script {
+                    sh """
+                        sed -i 's|version:.*|version: ${IMAGE_TAG}|' EKS/helm/values.yaml
+                    """
+                }
+            }
+        }
+
+        stage('Commit & Push Updated Manifests') {
+            steps {
+                script {
+                    sh """
+                        git config user.email "jenkins@ci.com"
+                        git config user.name "Jenkins CI"
+                        git add EKS/helm/values.yaml
+                        git commit -m "Update image tag to ${IMAGE_TAG}"
+                        git push origin main
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker logout'
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
+------- END OF Jenkinsfile -------
+
+Step 16: Create Jenkins Pipeline Job
+---------------------------------------
+
+1. Open Jenkins dashboard
+2. Click "New Item"
+3. Enter name: "robot-shop-pipeline"
+4. Select "Pipeline"
+5. Click OK
+6. Under "Pipeline" section:
+   - Definition: Pipeline script from SCM
+   - SCM: Git
+   - Repository URL: https://github.com/your-username/three-tier-architecture-demo.git
+   - Credentials: Select your GitHub credentials
+   - Branch: */main
+   - Script Path: Jenkinsfile
+7. Under "Build Triggers":
+   - Check "Poll SCM"
+   - Schedule: H/2 * * * *    (polls every 2 minutes)
+8. Click Save
+
+================================================================================
+PHASE 9: INSTALL ARGOCD (CD TOOL)
+================================================================================
+
+Step 17: Deploy ArgoCD on Minikube
+-------------------------------------
+
+# Create ArgoCD namespace
+kubectl create namespace argocd
+
+# Install ArgoCD
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# Wait for ArgoCD to be ready
+kubectl get pods -n argocd -w
+
+Step 18: Expose ArgoCD Server
+---------------------------------
+
+# Change service type to NodePort
+kubectl patch svc argocd-server -n argocd -p "{\"spec\": {\"type\": \"NodePort\"}}"
+
+# Get ArgoCD URL
+minikube service argocd-server -n argocd --url
+
+Step 19: Get ArgoCD Admin Password
+--------------------------------------
+
+# For Windows (PowerShell):
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}"
+# Copy the output and decode it from base64:
+# Go to https://www.base64decode.org/ and paste the output to get the password
+
+# For Linux/Mac:
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+Step 20: Login to ArgoCD
+---------------------------
+
+# Open the URL from Step 18 in your browser
+# Login with:
+#   Username: admin
+#   Password: (password from Step 19)
+
+================================================================================
+PHASE 10: CONFIGURE ARGOCD APPLICATION (CD)
+================================================================================
+
+Step 21: Create ArgoCD Application Manifest
+----------------------------------------------
+
+Create a file called "argocd-application.yaml":
+
+------- START OF argocd-application.yaml -------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: robot-shop
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/your-username/three-tier-architecture-demo.git
+    targetRevision: main
+    path: EKS/helm
+    helm:
+      valueFiles:
+        - values.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: robot-shop
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+------- END OF argocd-application.yaml -------
+
+Step 22: Apply ArgoCD Application
+-------------------------------------
+
+# Create robot-shop namespace
+kubectl create ns robot-shop
+
+# Apply ArgoCD application
+kubectl apply -f argocd-application.yaml
+
+# Verify application status
+kubectl get applications -n argocd
+
+================================================================================
+PHASE 11: VERIFY COMPLETE CI/CD PIPELINE
+================================================================================
+
+Step 23: Check All Services are Running
+-----------------------------------------
+
+# Check Robot Shop pods
+kubectl get pods -n robot-shop
+
+# Expected output:
+# NAME          READY   STATUS    RESTARTS   AGE
+# cart          1/1     Running   0          2m
+# catalogue     1/1     Running   0          2m
+# dispatch      1/1     Running   0          2m
+# mongodb       1/1     Running   0          2m
+# mysql         1/1     Running   0          2m
+# payment       1/1     Running   0          2m
+# rabbitmq      1/1     Running   0          2m
+# ratings       1/1     Running   0          2m
+# redis         1/1     Running   0          2m
+# shipping      1/1     Running   0          2m
+# user          1/1     Running   0          2m
+# web           1/1     Running   0          2m
+
+# Check Jenkins pods
+kubectl get pods -n jenkins
+
+# Check ArgoCD pods
+kubectl get pods -n argocd
+
+# Check all services
+kubectl get svc -n robot-shop
+
+Step 24: Access the Application
+----------------------------------
+
+# Access Robot Shop
+minikube service web -n robot-shop
+
+# Access Jenkins
+minikube service jenkins -n jenkins --url
+
+# Access ArgoCD
+minikube service argocd-server -n argocd --url
+
+# Access Kubernetes Dashboard
+minikube dashboard
+
+================================================================================
+PHASE 12: CI/CD FLOW - HOW IT WORKS
+================================================================================
+
+Complete CI/CD Pipeline Flow:
+-------------------------------
+
+1. Developer pushes code to GitHub
+         |
+         v
+2. Jenkins detects change (via Poll SCM every 2 minutes)
+         |
+         v
+3. Jenkins builds Docker images for each microservice
+         |
+         v
+4. Jenkins pushes images to Docker Hub with new tag
+         |
+         v
+5. Jenkins updates Helm values.yaml with new image tag
+         |
+         v
+6. Jenkins commits & pushes updated values.yaml to GitHub
+         |
+         v
+7. ArgoCD detects change in Git repo (auto-sync enabled)
+         |
+         v
+8. ArgoCD deploys updated app to Minikube (robot-shop namespace)
+         |
+         v
+9. Application is live with new changes!
+
+================================================================================
+PHASE 13: TESTING THE PIPELINE
+================================================================================
+
+Step 25: Test the CI/CD Pipeline
+-----------------------------------
+
+1. Make a small code change in any service (e.g., edit web/static/index.html)
+2. Commit and push to GitHub:
+
+   git add .
+   git commit -m "Test CI/CD pipeline"
+   git push origin main
+
+3. Watch Jenkins build (Jenkins dashboard -> robot-shop-pipeline)
+4. Watch ArgoCD sync (ArgoCD dashboard -> robot-shop)
+5. Verify the change is reflected in the running application
+
+================================================================================
+PHASE 14: CLEANUP
+================================================================================
+
+Step 26: Remove Everything
+-----------------------------
+**IMAGES AVAILABLE:** You already have robotshop/rs-* images built locally
+2. **Docker Hub Username:** kaveera725 (already configured)
+3. Replace "your-username" with your actual GitHub username
+4. Minikube requires Docker Desktop to be running (CURRENTLY RUNNING ✓)
+5. Minimum system requirements: 8GB RAM, 4 CPU cores
+6. For webhooks (instead of polling), you need a public URL (use ngrok)
+7. ArgoCD auto-sync polls Git every 3 minutes by default
+8. Jenkins Poll SCM is set to every 2 minutes
+9. All passwords should be changed for production use
+10. If testing locally without Docker Hub, use imagePullPolicy: Never
+
+================================================================================
+CURRENT SYSTEM STATUS
+================================================================================
+
+Docker Hub Configuration:
+- Username: kaveera725 ✓
+- Status: Ready to push images
+
+Docker Images Available Locally:
+- robotshop/rs-web:2.1.0
+- robotshop/rs-catalogue:2.1.0
+- robotshop/rs-user:2.1.0
+- robotshop/rs-cart:2.1.0
+- robotshop/rs-payment:2.1.0
+- robotshop/rs-shipping:2.1.0
+- robotshop/rs-ratings:2.1.0
+- robotshop/rs-dispatch:2.1.0
+- robotshop/rs-mongodb:2.1.0
+- robotshop/rs-mysql-db:2.1.0
+
+Containers Running:
+- robot-shop-web (port 8081:8080)
+- minikube
+- Docker Desktop
+
+Next Steps:
+-----------
+1. Tag and push images to Docker Hub as kaveera725/rs-*:2.1.0 (Step 6)
+2. Start fresh Minikube cluster (Step 2)
+3. Deploy with Helm (Step 8)
+4. Setup CI/CD tools (Steps 10-22)
+kubectl delete -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# Remove ArgoCD application
+kubectl delete -f argocd-application.yaml
+
+# Remove namespaces
+kubectl delete ns robot-shop jenkins argocd
+
+# Stop and delete Minikube
+minikube stop
+minikube delete
+
+================================================================================
+QUICK ACCESS URLS SUMMARY
+================================================================================
+
+| Tool            | Command                                          |
+|-----------------|--------------------------------------------------|
+| Robot Shop      | minikube service web -n robot-shop                |
+| Jenkins         | minikube service jenkins -n jenkins --url         |
+| ArgoCD          | minikube service argocd-server -n argocd --url    |
+| K8s Dashboard   | minikube dashboard                                |
+
+================================================================================
+IMPORTANT NOTES
+================================================================================
+
+1. **Docker Hub Username:** kaveera725 (configured ✓)
+2. Replace "your-username" with your actual GitHub username
+3. Minikube requires Docker Desktop to be running
+4. Minimum system requirements: 8GB RAM, 4 CPU cores
+5. For webhooks (instead of polling), you need a public URL (use ngrok)
+6. ArgoCD auto-sync polls Git every 3 minutes by default
+7. Jenkins Poll SCM is set to every 2 minutes
+8. All passwords should be changed for production use
+
+================================================================================
